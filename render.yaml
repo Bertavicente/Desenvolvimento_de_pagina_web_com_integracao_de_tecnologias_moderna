@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: projeto-pagina-web
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server/app.js
+    envVars:
+      - key: NODE_VERSION
+        value: 22.15.0
+      - key: JWT_SECRET
+        value: segredo-super-secreto
+      - key: NODE_ENV
+        value: production
+    autoDeploy: true

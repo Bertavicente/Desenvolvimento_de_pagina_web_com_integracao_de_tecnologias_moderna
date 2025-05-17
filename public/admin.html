@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Lista de Compras</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/estilo.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Lista de Compras</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <div class="navbar-nav">
+                    <a class="nav-link" href="/admin">Gerenciar Itens</a>
+                    <a class="nav-link" href="/resumo">Resumo</a>
+                    <a class="nav-link" href="/chat">Chat</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <h1>Gerenciamento de Itens</h1>
+        <form id="add-item-form">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <input type="text" id="item-name" class="form-control" placeholder="Nome do item" required>
+                </div>
+                <div class="col-md-2">
+                    <input type="number" id="item-price" class="form-control" placeholder="Preço" step="0.01" required>
+                </div>
+                <div class="col-md-3">
+                    <select id="item-category" class="form-control">
+                        <option value="Alimentos">Alimentos</option>
+                        <option value="Higiene">Higiene</option>
+                        <option value="Limpeza">Limpeza</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <input type="text" id="item-location" class="form-control" placeholder="Local">
+                </div>
+                <div class="col-md-1">
+                    <button type="submit" class="btn btn-primary">Adicionar</button>
+                </div>
+            </div>
+        </form>
+
+        <div id="items-list" class="row mt-4"></div>
+        <h3>Total Atual: <span id="total-price">0.00 €</span></h3>
+        <p id="error-message" class="text-danger"></p>
+    </div>
+
+    <div class="modal fade" id="feedbackModal" tabindex="-1" aria-labelledby="feedbackModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="feedbackModalLabel">Feedback</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="modal-message"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editModalLabel">Editar Item</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-item-form">
+                        <input type="hidden" id="edit-item-id">
+                        <div class="mb-3">
+                            <label for="edit-item-name" class="form-label">Nome</label>
+                            <input type="text" class="form-control" id="edit-item-name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-item-price" class="form-label">Preço</label>
+                            <input type="number" class="form-control" id="edit-item-price" step="0.01" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-item-category" class="form-label">Categoria</label>
+                            <select class="form-control" id="edit-item-category" required>
+                                <option value="Alimentos">Alimentos</option>
+                                <option value="Higiene">Higiene</option>
+                                <option value="Limpeza">Limpeza</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-item-location" class="form-label">Local</label>
+                            <input type="text" class="form-control" id="edit-item-location">
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Salvar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Eu iniciei o JavaScript do admin');
+
+            const addItemForm = document.getElementById('add-item-form');
+            const editItemForm = document.getElementById('edit-item-form');
+            const itemsList = document.getElementById('items-list');
+            const totalPriceElement = document.getElementById('total-price');
+            const errorMessage = document.getElementById('error-message');
+            const feedbackModal = new bootstrap.Modal(document.getElementById('feedbackModal'));
+            const editModal = new bootstrap.Modal(document.getElementById('editModal'));
+            const modalMessage = document.getElementById('modal-message');
+            const userId = 'admin';
+
+            async function loadItems() {
+                try {
+                    const response = await fetch(`/api/items?userId=${userId}`);
+                    if (!response.ok) throw new Error('Erro ao carregar itens');
+                    const items = await response.json();
+                    console.log('Eu recebi os itens:', items);
+                    itemsList.innerHTML = '';
+                    let total = 0;
+                    items.forEach(item => {
+                        const card = document.createElement('div');
+                        card.className = 'col-md-4 mb-3';
+                        card.innerHTML = `
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">${item.name}</h5>
+                                    <p class="card-text">Preço: ${item.price.toFixed(2)} €</p>
+                                    <p class="card-text">Categoria: ${item.category}</p>
+                                    <p class="card-text">Local: ${item.location || 'N/A'}</p>
+                                    <p class="card-text">Adicionado por: ${item.userId}</p>
+                                    <button class="btn btn-danger btn-sm me-2" onclick="deleteItem('${item.id}')">Remover</button>
+                                    <button class="btn btn-warning btn-sm" onclick="openEditModal('${item.id}', '${item.name}', ${item.price}, '${item.category}', '${item.location || ''}')">Editar</button>
+                                </div>
+                            </div>
+                        `;
+                        itemsList.appendChild(card);
+                        total += item.price;
+                    });
+                    totalPriceElement.textContent = total.toFixed(2);
+                } catch (error) {
+                    showError('Eu não consegui carregar os itens: ' + error.message);
+                }
+            }
+
+            function showFeedback(message) {
+                modalMessage.textContent = message;
+                feedbackModal.show();
+                console.log('Eu mostrei o feedback:', message);
+            }
+
+            function showError(message) {
+                errorMessage.textContent = message;
+                console.error('Erro:', message);
+            }
+
+            function openEditModal(id, name, price, category, location) {
+                document.getElementById('edit-item-id').value = id;
+                document.getElementById('edit-item-name').value = name;
+                document.getElementById('edit-item-price').value = price;
+                document.getElementById('edit-item-category').value = category;
+                document.getElementById('edit-item-location').value = location;
+                editModal.show();
+                console.log('Eu abri o modal para editar o item:', id);
+            }
+
+            addItemForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const item = {
+                    name: document.getElementById('item-name').value.trim(),
+                    price: parseFloat(document.getElementById('item-price').value),
+                    category: document.getElementById('item-category').value,
+                    location: document.getElementById('item-location').value.trim(),
+                    userId: userId
+                };
+                if (!item.name || isNaN(item.price)) {
+                    showError('Eu preciso de um nome e preço válidos');
+                    return;
+                }
+                console.log('Eu estou enviando o item:', item);
+                try {
+                    const response = await fetch('/api/items', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(item)
+                    });
+                    const responseData = await response.json();
+                    console.log('Eu recebi a resposta do servidor:', responseData);
+                    if (response.ok) {
+                        showFeedback('Eu adicionei o item com sucesso!');
+                        addItemForm.reset();
+                        await loadItems();
+                    } else {
+                        showError(responseData.message || 'Eu não consegui adicionar o item');
+                    }
+                } catch (error) {
+                    showError('Eu não consegui adicionar o item: ' + error.message);
+                }
+            });
+
+            editItemForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const item = {
+                    name: document.getElementById('edit-item-name').value.trim(),
+                    price: parseFloat(document.getElementById('edit-item-price').value),
+                    category: document.getElementById('edit-item-category').value,
+                    location: document.getElementById('edit-item-location').value.trim(),
+                    userId: userId
+                };
+                const id = document.getElementById('edit-item-id').value;
+                if (!item.name || isNaN(item.price)) {
+                    showError('Eu preciso de um nome e preço válidos');
+                    return;
+                }
+                console.log('Eu estou editando o item:', id, item);
+                try {
+                    const response = await fetch(`/api/items/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(item)
+                    });
+                    const responseData = await response.json();
+                    console.log('Eu recebi a resposta do servidor:', responseData);
+                    if (response.ok) {
+                        showFeedback('Eu editei o item com sucesso!');
+                        editModal.hide();
+                        await loadItems();
+                    } else {
+                        showError(responseData.message || 'Eu não consegui editar o item');
+                    }
+                } catch (error) {
+                    showError('Eu não consegui editar o item: ' + error.message);
+                }
+            });
+
+            async function deleteItem(id) {
+                console.log('Eu estou removendo o item:', id);
+                try {
+                    const response = await fetch(`/api/items/${id}?userId=${userId}`, {
+                        method: 'DELETE'
+                    });
+                    console.log('Eu recebi a resposta do servidor para DELETE:', response.status);
+                    if (response.ok) {
+                        showFeedback('Eu removi o item com sucesso!');
+                        await loadItems();
+                    } else {
+                        const data = await response.json();
+                        showError(data.message || 'Eu não consegui remover o item');
+                    }
+                } catch (error) {
+                    showError('Eu não consegui remover o item: ' + error.message);
+                }
+            }
+
+            loadItems();
+        });
+    </script>
+</body>
+</html>

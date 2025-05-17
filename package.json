@@ -1,0 +1,12 @@
+{
+  "name": "projeto-pagina-web",
+  "version": "1.0.0",
+  "main": "server/app.js",
+  "scripts": {
+    "start": "node server/app.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "ws": "^8.18.0"
+  }
+}

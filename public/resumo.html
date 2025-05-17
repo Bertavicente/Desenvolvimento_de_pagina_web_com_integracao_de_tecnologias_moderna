@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resumo - Lista de Compras</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/estilo.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Lista de Compras</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <div class="navbar-nav">
+                    <a class="nav-link" href="/admin">Gerenciar Itens</a>
+                    <a class="nav-link" href="/resumo">Resumo</a>
+                    <a class="nav-link" href="/chat">Chat</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <h1>Resumo das Ações</h1>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Ação</th>
+                    <th>Item ID</th>
+                    <th>Usuário</th>
+                    <th>Data/Hora</th>
+                </tr>
+            </thead>
+            <tbody id="history-table"></tbody>
+        </table>
+        <p id="error-message" class="text-danger"></p>
+    </div>
+
+    <script>
+        const historyTable = document.getElementById('history-table');
+        const errorMessage = document.getElementById('error-message');
+
+        async function loadHistory() {
+            try {
+                const response = await fetch('/api/history');
+                if (!response.ok) throw new Error('Erro ao carregar histórico');
+                const history = await response.json();
+                console.log('Eu recebi o histórico:', history);
+                historyTable.innerHTML = '';
+                history.forEach(entry => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${entry.action}</td>
+                        <td>${entry.itemId}</td>
+                        <td>${entry.userId}</td>
+                        <td>${new Date(entry.timestamp).toLocaleString()}</td>
+                    `;
+                    historyTable.appendChild(row);
+                });
+            } catch (error) {
+                showError('Eu não consegui carregar o histórico: ' + error.message);
+            }
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            console.error('Erro:', message);
+        }
+
+        loadHistory();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
